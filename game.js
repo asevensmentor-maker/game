@@ -1,9 +1,13 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ✅ Increased canvas size
-canvas.width = 420;
-canvas.height = 700;
+// ===== FULL SCREEN CANVAS (FIXED) =====
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
 // Images
 const playerImg = new Image();
@@ -11,10 +15,10 @@ const obstacleImg = new Image();
 playerImg.src = "player.png";
 obstacleImg.src = "brinjal.png";
 
-// Game variables
+// Game state
 let gravity = 0.45;
-let jumpPower = -7;
-let maxUpSpeed = -8;
+let jumpPower = -8;
+let maxUpSpeed = -9;
 let score = 0;
 let gameOver = false;
 let gameStarted = false;
@@ -26,16 +30,27 @@ let player;
 let obstacles = [];
 let obstacleTimer = 0;
 
-// 🔁 Zig-zag pattern ONLY
-const zigZagPattern = [80, 520, 140, 460, 200, 400, 260, 340];
+// Zig-zag pattern (relative positions)
+function getZigZagPattern() {
+  const h = canvas.height;
+  return [
+    h * 0.15,
+    h * 0.75,
+    h * 0.25,
+    h * 0.65,
+    h * 0.35,
+    h * 0.55,
+    h * 0.45
+  ];
+}
 
-// Initialize / Reset
+// Init / Reset
 function initGame() {
   player = {
-    x: 170,
-    y: 300,
-    width: 70,
-    height: 90,
+    x: canvas.width * 0.25,
+    y: canvas.height * 0.5,
+    width: canvas.width * 0.14,
+    height: canvas.width * 0.18,
     velocity: 0
   };
 
@@ -46,7 +61,7 @@ function initGame() {
   gameStarted = true;
 }
 
-// Jump (smooth)
+// Jump
 function jump() {
   if (!gameStarted || gameOver) {
     initGame();
@@ -59,32 +74,31 @@ function jump() {
 }
 
 document.addEventListener("click", jump);
-document.addEventListener("touchstart", jump);
+document.addEventListener("touchstart", jump, { passive: true });
 document.addEventListener("keydown", e => {
   if (e.code === "Space") jump();
 });
 
-// Create zig-zag obstacles
+// Create zig-zag obstacles (screen-fit)
 function createZigZag() {
-  let startX = canvas.width + 40;
+  const pattern = getZigZagPattern();
+  let startX = canvas.width + 50;
+  let spacing = canvas.width * 0.35;
 
-  zigZagPattern.forEach((y, i) => {
+  pattern.forEach((y, i) => {
     obstacles.push({
-      x: startX + i * 110,
+      x: startX + i * spacing,
       y: y,
-      width: 80,
-      height: 45,
-      angle: i % 2 === 0 ? 0.4 : -0.4,
-      rotationSpeed: i % 2 === 0 ? 0.05 : -0.05
+      width: canvas.width * 0.18,
+      height: canvas.width * 0.08
     });
   });
 }
 
-// Update game
+// Update
 function update() {
   if (!gameStarted || gameOver) return;
 
-  // Player physics
   player.velocity += gravity;
   player.y += player.velocity;
 
@@ -93,18 +107,15 @@ function update() {
     gameOver = true;
   }
 
-  // Obstacle timing
   obstacleTimer++;
-  if (obstacleTimer > 180) {
+  if (obstacleTimer > 120) {
     createZigZag();
     obstacleTimer = 0;
   }
 
   obstacles.forEach(o => {
-    o.x -= 2.6;
-    o.angle += o.rotationSpeed;
+    o.x -= canvas.width * 0.004;
 
-    // Collision
     if (
       player.x < o.x + o.width &&
       player.x + player.width > o.x &&
@@ -119,16 +130,7 @@ function update() {
   score++;
 }
 
-// Draw rotated image
-function drawRotated(img, x, y, w, h, angle) {
-  ctx.save();
-  ctx.translate(x + w / 2, y + h / 2);
-  ctx.rotate(angle);
-  ctx.drawImage(img, -w / 2, -h / 2, w, h);
-  ctx.restore();
-}
-
-// Draw everything
+// Draw
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -139,36 +141,35 @@ function draw() {
 
   // Obstacles
   obstacles.forEach(o => {
-    drawRotated(obstacleImg, o.x, o.y, o.width, o.height, o.angle);
+    ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
   });
 
   // Score
-  ctx.fillStyle = "white";
+  ctx.fillStyle = "#fff";
   ctx.font = "18px Arial";
-  ctx.fillText("Score: " + score, 20, 30);
+  ctx.fillText("Score: " + score, 20, 40);
 
-  // Start / Game over text
   if (!gameStarted) {
-    ctx.font = "26px Arial";
-    ctx.fillText("TAP TO START", 110, 360);
+    ctx.font = "28px Arial";
+    ctx.fillText("TAP TO START", canvas.width / 2 - 100, canvas.height / 2);
   }
 
   if (gameOver) {
     ctx.font = "32px Arial";
-    ctx.fillText("GAME OVER", 105, 330);
+    ctx.fillText("GAME OVER", canvas.width / 2 - 100, canvas.height / 2 - 20);
     ctx.font = "16px Arial";
-    ctx.fillText("Tap to Restart", 150, 365);
+    ctx.fillText("Tap to Restart", canvas.width / 2 - 60, canvas.height / 2 + 20);
   }
 }
 
-// Game loop
+// Loop
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
 
-// Start after images load
+// Start when images loaded
 let loaded = 0;
 [playerImg, obstacleImg].forEach(img => {
   img.onload = () => {
