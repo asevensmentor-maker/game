@@ -1,7 +1,7 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ===== FULL SCREEN CANVAS (FIXED) =====
+// Full screen canvas (locked)
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -15,10 +15,15 @@ const obstacleImg = new Image();
 playerImg.src = "player.png";
 obstacleImg.src = "brinjal.png";
 
-// Game state
+// ===== GAME SETTINGS (BALANCED) =====
 let gravity = 0.45;
 let jumpPower = -8;
 let maxUpSpeed = -9;
+
+let baseSpeed = 2.2;        // obstacle speed
+let spawnDelay = 140;      // distance between zig-zags
+let maxObstacles = 14;     // HARD LIMIT
+
 let score = 0;
 let gameOver = false;
 let gameStarted = false;
@@ -30,17 +35,16 @@ let player;
 let obstacles = [];
 let obstacleTimer = 0;
 
-// Zig-zag pattern (relative positions)
+// Zig-zag path (screen-relative)
 function getZigZagPattern() {
   const h = canvas.height;
   return [
-    h * 0.15,
-    h * 0.75,
-    h * 0.25,
-    h * 0.65,
-    h * 0.35,
-    h * 0.55,
-    h * 0.45
+    h * 0.18,
+    h * 0.72,
+    h * 0.28,
+    h * 0.62,
+    h * 0.38,
+    h * 0.52
   ];
 }
 
@@ -49,8 +53,8 @@ function initGame() {
   player = {
     x: canvas.width * 0.25,
     y: canvas.height * 0.5,
-    width: canvas.width * 0.14,
-    height: canvas.width * 0.18,
+    width: canvas.width * 0.18,   // 👈 BIGGER PLAYER
+    height: canvas.width * 0.22,
     velocity: 0
   };
 
@@ -59,6 +63,9 @@ function initGame() {
   obstacleTimer = 0;
   gameOver = false;
   gameStarted = true;
+
+  baseSpeed = 2.2;
+  spawnDelay = 140;
 }
 
 // Jump
@@ -79,18 +86,20 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space") jump();
 });
 
-// Create zig-zag obstacles (screen-fit)
+// Create zig-zag (LIMITED)
 function createZigZag() {
+  if (obstacles.length > maxObstacles) return;
+
   const pattern = getZigZagPattern();
-  let startX = canvas.width + 50;
-  let spacing = canvas.width * 0.35;
+  let startX = canvas.width + 80;
+  let spacing = canvas.width * 0.45;
 
   pattern.forEach((y, i) => {
     obstacles.push({
       x: startX + i * spacing,
       y: y,
-      width: canvas.width * 0.18,
-      height: canvas.width * 0.08
+      width: canvas.width * 0.24,   // 👈 BIGGER BRINJAL
+      height: canvas.width * 0.12
     });
   });
 }
@@ -99,6 +108,7 @@ function createZigZag() {
 function update() {
   if (!gameStarted || gameOver) return;
 
+  // Player physics
   player.velocity += gravity;
   player.y += player.velocity;
 
@@ -107,15 +117,18 @@ function update() {
     gameOver = true;
   }
 
+  // Spawn logic
   obstacleTimer++;
-  if (obstacleTimer > 120) {
+  if (obstacleTimer > spawnDelay) {
     createZigZag();
     obstacleTimer = 0;
   }
 
+  // Move obstacles
   obstacles.forEach(o => {
-    o.x -= canvas.width * 0.004;
+    o.x -= baseSpeed;
 
+    // Collision
     if (
       player.x < o.x + o.width &&
       player.x + player.width > o.x &&
@@ -127,6 +140,14 @@ function update() {
   });
 
   obstacles = obstacles.filter(o => o.x + o.width > 0);
+
+  // 🎯 Difficulty increases SLOWLY
+  if (score % 300 === 0 && score !== 0) {
+    baseSpeed += 0.25;           // speed up slowly
+    spawnDelay -= 6;             // closer but controlled
+    if (spawnDelay < 110) spawnDelay = 110;
+  }
+
   score++;
 }
 
@@ -144,9 +165,9 @@ function draw() {
     ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
   });
 
-  // Score
+  // UI
   ctx.fillStyle = "#fff";
-  ctx.font = "18px Arial";
+  ctx.font = "20px Arial";
   ctx.fillText("Score: " + score, 20, 40);
 
   if (!gameStarted) {
@@ -155,10 +176,10 @@ function draw() {
   }
 
   if (gameOver) {
-    ctx.font = "32px Arial";
-    ctx.fillText("GAME OVER", canvas.width / 2 - 100, canvas.height / 2 - 20);
-    ctx.font = "16px Arial";
-    ctx.fillText("Tap to Restart", canvas.width / 2 - 60, canvas.height / 2 + 20);
+    ctx.font = "34px Arial";
+    ctx.fillText("GAME OVER", canvas.width / 2 - 110, canvas.height / 2 - 20);
+    ctx.font = "18px Arial";
+    ctx.fillText("Tap to Restart", canvas.width / 2 - 65, canvas.height / 2 + 20);
   }
 }
 
@@ -169,7 +190,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Start when images loaded
+// Start after images load
 let loaded = 0;
 [playerImg, obstacleImg].forEach(img => {
   img.onload = () => {
