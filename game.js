@@ -1,8 +1,9 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 320;
-canvas.height = 520;
+// Bigger canvas
+canvas.width = 420;
+canvas.height = 700;
 
 // Images
 const playerImg = new Image();
@@ -11,9 +12,9 @@ playerImg.src = "player.png";
 obstacleImg.src = "brinjal.png";
 
 // Game variables
-let gravity = 0.4;
-let jumpPower = -6;          // reduced jump
-let maxUpSpeed = -7;        // speed limiter
+let gravity = 0.45;
+let jumpPower = -7;
+let maxUpSpeed = -8;
 let score = 0;
 let gameOver = false;
 let gameStarted = false;
@@ -25,13 +26,16 @@ let player;
 let obstacles = [];
 let obstacleTimer = 0;
 
-// Init game
+// Zig-zag path (TOP ↔ BOTTOM)
+const zigZagPattern = [80, 520, 140, 460, 200, 400, 260, 340];
+
+// Init / Reset game
 function initGame() {
   player = {
-    x: 120,
-    y: 220,
-    width: 60,
-    height: 80,
+    x: 170,
+    y: 300,
+    width: 70,
+    height: 90,
     velocity: 0
   };
 
@@ -42,14 +46,13 @@ function initGame() {
   gameStarted = true;
 }
 
-// Jump control (smooth)
+// Jump control
 function jump() {
   if (!gameStarted || gameOver) {
     initGame();
     return;
   }
 
-  // limit upward speed
   if (player.velocity > maxUpSpeed) {
     player.velocity = jumpPower;
   }
@@ -61,27 +64,17 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space") jump();
 });
 
-// Create obstacles (TOP & BOTTOM)
-function createObstaclePair() {
-  const gap = 160;
-  const topHeight = Math.random() * 120 + 40;
+// Create zig-zag obstacles (NO ROTATION)
+function createZigZag() {
+  let startX = canvas.width + 40;
 
-  obstacles.push({
-    x: canvas.width,
-    y: topHeight - 40,
-    width: 70,
-    height: 40,
-    angle: 0,
-    speed: -0.05
-  });
-
-  obstacles.push({
-    x: canvas.width,
-    y: topHeight + gap,
-    width: 70,
-    height: 40,
-    angle: 0,
-    speed: 0.05
+  zigZagPattern.forEach((y, i) => {
+    obstacles.push({
+      x: startX + i * 110,
+      y: y,
+      width: 80,
+      height: 45
+    });
   });
 }
 
@@ -98,16 +91,15 @@ function update() {
     gameOver = true;
   }
 
-  // Obstacles timing
+  // Spawn zig-zag
   obstacleTimer++;
-  if (obstacleTimer > 140) {
-    createObstaclePair();
+  if (obstacleTimer > 180) {
+    createZigZag();
     obstacleTimer = 0;
   }
 
   obstacles.forEach(o => {
-    o.x -= 2.5;
-    o.angle += o.speed;
+    o.x -= 2.6;
 
     // Collision
     if (
@@ -124,42 +116,36 @@ function update() {
   score++;
 }
 
-// Draw rotated image
-function drawRotatedImage(img, x, y, w, h, angle) {
-  ctx.save();
-  ctx.translate(x + w / 2, y + h / 2);
-  ctx.rotate(angle);
-  ctx.drawImage(img, -w / 2, -h / 2, w, h);
-  ctx.restore();
-}
-
-// Draw game
+// Draw
 function draw() {
-  ctx.fillStyle = "#1fa3a3";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Player
   if (player) {
     ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
   }
 
+  // Obstacles (STATIC)
   obstacles.forEach(o => {
-    drawRotatedImage(obstacleImg, o.x, o.y, o.width, o.height, o.angle);
+    ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
   });
 
+  // Score
   ctx.fillStyle = "white";
-  ctx.font = "16px Arial";
-  ctx.fillText("Score: " + score, 10, 25);
+  ctx.font = "18px Arial";
+  ctx.fillText("Score: " + score, 20, 30);
 
+  // Start / Game Over
   if (!gameStarted) {
-    ctx.font = "22px Arial";
-    ctx.fillText("TAP TO START", 85, 260);
+    ctx.font = "26px Arial";
+    ctx.fillText("TAP TO START", 110, 360);
   }
 
   if (gameOver) {
-    ctx.font = "26px Arial";
-    ctx.fillText("GAME OVER", 70, 240);
-    ctx.font = "14px Arial";
-    ctx.fillText("Tap to Restart", 95, 270);
+    ctx.font = "32px Arial";
+    ctx.fillText("GAME OVER", 105, 330);
+    ctx.font = "16px Arial";
+    ctx.fillText("Tap to Restart", 150, 365);
   }
 }
 
