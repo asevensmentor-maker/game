@@ -1,7 +1,7 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// Bigger canvas
+// ✅ Increased canvas size
 canvas.width = 420;
 canvas.height = 700;
 
@@ -26,10 +26,10 @@ let player;
 let obstacles = [];
 let obstacleTimer = 0;
 
-// Zig-zag path (TOP ↔ BOTTOM)
+// 🔁 Zig-zag pattern ONLY
 const zigZagPattern = [80, 520, 140, 460, 200, 400, 260, 340];
 
-// Init / Reset game
+// Initialize / Reset
 function initGame() {
   player = {
     x: 170,
@@ -46,7 +46,7 @@ function initGame() {
   gameStarted = true;
 }
 
-// Jump control
+// Jump (smooth)
 function jump() {
   if (!gameStarted || gameOver) {
     initGame();
@@ -64,7 +64,7 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space") jump();
 });
 
-// Create zig-zag obstacles (NO ROTATION)
+// Create zig-zag obstacles
 function createZigZag() {
   let startX = canvas.width + 40;
 
@@ -73,7 +73,9 @@ function createZigZag() {
       x: startX + i * 110,
       y: y,
       width: 80,
-      height: 45
+      height: 45,
+      angle: i % 2 === 0 ? 0.4 : -0.4,
+      rotationSpeed: i % 2 === 0 ? 0.05 : -0.05
     });
   });
 }
@@ -91,7 +93,7 @@ function update() {
     gameOver = true;
   }
 
-  // Spawn zig-zag
+  // Obstacle timing
   obstacleTimer++;
   if (obstacleTimer > 180) {
     createZigZag();
@@ -100,6 +102,7 @@ function update() {
 
   obstacles.forEach(o => {
     o.x -= 2.6;
+    o.angle += o.rotationSpeed;
 
     // Collision
     if (
@@ -116,7 +119,16 @@ function update() {
   score++;
 }
 
-// Draw
+// Draw rotated image
+function drawRotated(img, x, y, w, h, angle) {
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.rotate(angle);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+// Draw everything
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -125,9 +137,9 @@ function draw() {
     ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
   }
 
-  // Obstacles (STATIC)
+  // Obstacles
   obstacles.forEach(o => {
-    ctx.drawImage(obstacleImg, o.x, o.y, o.width, o.height);
+    drawRotated(obstacleImg, o.x, o.y, o.width, o.height, o.angle);
   });
 
   // Score
@@ -135,7 +147,7 @@ function draw() {
   ctx.font = "18px Arial";
   ctx.fillText("Score: " + score, 20, 30);
 
-  // Start / Game Over
+  // Start / Game over text
   if (!gameStarted) {
     ctx.font = "26px Arial";
     ctx.fillText("TAP TO START", 110, 360);
